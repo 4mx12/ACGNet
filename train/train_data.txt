@@ -1,1 +1,2 @@
 Put your data here
+The data is already open in the paper ：G. Cheng, J. Han, and X. Lu, “Remote sensing image scene classiffcation: Benchmark and state of the art,” Proceedings of the IEEE, vol. 105, no. 10, pp. 1865–1883, 2017.
