@@ -1,21 +1,14 @@
-
+import os
 import torch
 from PIL import Image
 import numpy as np
 from torchvision import transforms as T
-# from utils import add_noise
-from util import PSNR
-import math
 import time
 from idea import Network
-# from modelchange3 import DPDNN
-#from model import DPDNN
-
 import torch.nn as nn
-#from cofigchange2 import opt
-from configtest import opt
-import os
-from skimage.metrics import structural_similarity as compare_ssim
+
+
+
 np.set_printoptions(suppress=True)
 
 os.environ["CUDA_VISIBLE_DEVICES"] = '0'
@@ -59,9 +52,8 @@ def MOR(im_before,im_after):
 
 # Here is the path of your test image, 'i' means the ith image, you only need to provide the ground truth image
 # Then we add Gaussian noise to the gt image
-i = 2
-#label_img = '/scratch/184/hzf/DPDNN_PyTorch-master/DENOISE/Set12/%.2d.png'%i
-#label_img = r'/home/lincong/QCH/DPDNN_PyTorch-master/Set12/%.2d.png'%i
+i = 1
+
 noise_img='./SAR_TEST/%.2d.bmp'%i
 
 transform1 = T.ToTensor()
@@ -71,7 +63,7 @@ transform2 = T.ToPILImage()
 with torch.no_grad():
     net = Network()
     net = nn.DataParallel(net).cuda()
-    net.load_state_dict(torch.load('/home/hainandx/mx/learn/SAR_denoise/checkpoints/base_L8_no256_no_dega.pth'))
+    net.load_state_dict(torch.load('./checkpoints/acgnet_L1.pth'))
     img = Image.open(noise_img)
     # img.show()
     label = np.array(img).astype(np.float32)   # label:0~255
@@ -88,7 +80,7 @@ with torch.no_grad():
     output = torch.clamp(output, min=0, max=1)
     output = transform2(output)
     # To save the output(denoised) image, you must create a new folder. Here is my path.
-    output.save('/home/hainandx/mx/learn/CBDNet-pytorch-master/SAR_output/L2/ACGNet/no_dega.bmp')
+    output.save('./SAR_output/L1/result.bmp')
 
     img_noise = transform2(img_noise.resize_(img_H, img_W))
     #img_noise.show()
@@ -104,7 +96,7 @@ with torch.no_grad():
     mor=MOR(img_noise,output)
     print('ENL of image ' + str(i) + ' is ', enl, 'EPD_ROA_HD:',epd_hd,'EPD_ROA_VD:',epd_vd,'MOR',mor)
 
-    print("程序运行时间：", end_time - start_time, "秒")
+    print("running time：", end_time - start_time, "s")
 
 
 
