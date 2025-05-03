@@ -1,21 +1,15 @@
 
 import torch
-from PIL import Image
-import numpy as np
+import torch.nn as nn
 from torchvision import transforms as T
+import numpy as np
+from PIL import Image
+from idea import Network
 from util import add_noise
 from util import PSNR
-import math
-
-from idea import Network
-#from model import DPDNN
-
-import torch.nn as nn
-#from cofigchange2 import opt
-from configchange import opt
+from config import opt
 import os
 from skimage.metrics import structural_similarity as compare_ssim
-
 
 
 
@@ -26,9 +20,8 @@ n = 12
 tpsnr=0
 tssim=0
 for i in range(1,n+1):
-#label_img = '/scratch/184/hzf/DPDNN_PyTorch-master/DENOISE/Set12/%.2d.png'%i
-    label_img = r'/home/hainandx/mx/learn/SAR_denoise/Set12/%.2d.png'%i
 
+    label_img = r'./Set12/%.2d.png'%i
 
     transform1 = T.ToTensor()
     transform2 = T.ToPILImage()
@@ -36,7 +29,7 @@ for i in range(1,n+1):
     with torch.no_grad():
         net = Network()
         net = nn.DataParallel(net).cuda()
-        net.load_state_dict(torch.load('/home/hainandx/mx/learn/SAR_denoise/checkpoints/losepro_L2.pth'))
+        net.load_state_dict(torch.load(opt.save_model_path))
 
         img = Image.open(label_img).resize((512,512))
         # img.show()
@@ -53,11 +46,11 @@ for i in range(1,n+1):
         output = torch.clamp(output, min=0, max=1)
         output = transform2(output)
         # To save the output(denoised) image, you must create a new folder. Here is my path.
-        # output.save('/home/hainandx/mx/learn/SAR_denoise/result_visual/denoise_%d_%d.png'%(opt.noise_level,i))
+        # output.save('./result_visual/denoise_%d_%d.png'%(opt.noise_level,i))
 
         img_noise = transform2(img_noise.resize_(img_H, img_W))
         #img_noise.show()
-        # img_noise.save('/home/hainandx/mx/learn/SAR_denoise/result_visual/noise_%d_%d.png'%(opt.noise_level, i))
+        # img_noise.save('./result_visual/noise_%d_%d.png'%(opt.noise_level, i))
 
         # show output image
         #output.show()
@@ -65,8 +58,7 @@ for i in range(1,n+1):
 
         mse, psnr = PSNR(output, label)
         ssim = compare_ssim(output, label, data_range=255)
-        #print(ssim)
-        # Because of the randomness of Gaussian noise, the output results are different each time.
+    
         print(i, 'MSE loss:%f, PSNR:%f, SSIM:%.3f'%(mse, psnr,ssim))
         tpsnr=tpsnr+psnr
         tssim=tssim+ssim
