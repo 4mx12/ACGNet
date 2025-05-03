@@ -4,7 +4,7 @@ from torch import optim
 import numpy as np
 from idea import Network
 from Dataset import Train_Data
-from configchange import opt
+from config import opt
 from torch.utils.data import DataLoader
 from PIL import Image
 from torchvision import transforms as T
