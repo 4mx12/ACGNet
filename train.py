@@ -1,26 +1,23 @@
-import numpy as np
 import torch
 import torch.nn as nn
 from torch import optim
+import numpy as np
 from idea import Network
-# from network_swinir import SwinIR
 from Dataset import Train_Data
 from configchange import opt
 from torch.utils.data import DataLoader
 from PIL import Image
 from torchvision import transforms as T
 from util import PSNR
-import os, time, datetime
+import os, time
 from util import add_noise
 from skimage.metrics import structural_similarity as compare_ssim
-import cv2 as cv
-import torch.nn.functional as F
 from loss_improve import SARLoss
-# torch.manual_seed(123)
+
 
 
 torch.multiprocessing.set_sharing_strategy('file_system')
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
 
 def train(use_gpu=True):
@@ -29,8 +26,7 @@ def train(use_gpu=True):
     train_loader = DataLoader(train_data, opt.batch_size, shuffle=True)
 
     net = Network()
-    # criterion = nn.MSELoss()
-    # 0.0005 0.0005\ 0.05 0.001
+
     criterion = SARLoss(
     lambda_edge=0.1,
     lambda_tv=0.001,
@@ -41,8 +37,7 @@ def train(use_gpu=True):
         net = net.cuda()
         net = nn.DataParallel(net)
         criterion = criterion.cuda()
-        # edge_loss = edge_loss.cuda()
-        # soft_loss = soft_loss.cuda()
+
 
     # initialize weights by Xavizer
     for layer in net.modules():
@@ -50,14 +45,14 @@ def train(use_gpu=True):
             nn.init.xavier_uniform_(layer.weight)
 
     # Save the original model
-    torch.save(net.state_dict(), r'./checkpoints/base_L%d_no256_no_dega.pth'%opt.noise_level)
+    torch.save(net.state_dict(), r'./checkpoints/acgnet_L%d.pth'%opt.noise_level)
 
     optimizer = optim.Adam(net.parameters(), lr=opt.lr)
 
     psnr_best = 0
-    net.train()  # 必须设置为训练模式才会打印
+    net.train()
 
-    f = open("./log/0311.txt", mode="a",encoding="utf-8")
+    f = open("./log/process.txt", mode="a",encoding="utf-8")
     for epoch in range(opt.max_epoch):
         for i, (data, label) in enumerate(train_loader):
             start_time = time.time()
@@ -68,11 +63,6 @@ def train(use_gpu=True):
             output = net(data)
             loss = criterion(output, label)
 
-            # ditillation_loss = soft_loss(
-            #     F.softmax(output / temp, dim=1),
-            #     F.softmax(label / temp, dim=1)
-            # ) - edge_loss(output, label)
-            # loss = alpha * loss + (1 - alpha) * ditillation_loss
             loss.backward()
             optimizer.step()
 
@@ -98,19 +88,14 @@ def train(use_gpu=True):
     print('Finished Training',file=f)
     f.close()
 
-# This function is for checking the training effect, not the test code
+
 def test(net1,epoch, i):
-    # net1 = Network()
-    # net1 = net1.cuda()
-    # net1 = nn.DataParallel(net1)
-    # net1.load_state_dict(torch.load(opt.save_model_path))
     n = 12
     tmse=0
     tpsnr = 0
     tssim = 0
     for i in range(1, n + 1):
         label_img = './Set12/%.2d.png'%i
-        # label_img = r'/home/hainandx/mx/learn/SAR_denoise/test_data/%.2d.png' % i
 
         transform1 = T.ToTensor()
         transform2 = T.ToPILImage()
@@ -118,7 +103,6 @@ def test(net1,epoch, i):
         with torch.no_grad():
 
             img = Image.open(label_img).resize((512, 512))
-            # img.show()
             label = np.array(img).astype(np.float32)  # label:0~255
             img_H = img.size[0]
             img_W = img.size[1]
@@ -137,9 +121,6 @@ def test(net1,epoch, i):
 
             mse, psnr = PSNR(output, label)
             ssim = compare_ssim(output, label, data_range=255)
-            # print(ssim)
-            # Because of the randomness of Gaussian noise, the output results are different each time.
-            # print(i, 'MSE loss:%f, PSNR:%f, SSIM:%.3f' % (mse, psnr, ssim))
             tmse=tmse+mse
             tpsnr = tpsnr + psnr
             tssim = tssim + ssim
